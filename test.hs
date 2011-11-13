@@ -39,7 +39,7 @@ preds :: (Ord a) => a -> (Graph a) -> [a]
 preds v (Graph _ back _) = back ! v
 
 adjs :: (Ord a) => a -> (Graph a) -> [a]
-adjs v g = concat [succs v g, preds v g]
+adjs v g = (succs v g) ++ (preds v g)
 
 edges :: (Ord a) => (Graph a) -> [(a, a)]
 edges (Graph verts _ forw) = concat $ map edgesFrom $ Set.toList verts

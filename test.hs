@@ -6,6 +6,7 @@ import qualified Data.Set as Set
 import Data.Map (Map, (!))
 import Data.Set (Set, member)
 
+import Control.Applicative
 
 -- a data type for directed graphs (incomplete)
 
@@ -42,7 +43,7 @@ adjs v g = concat [succs v g, preds v g]
 
 edges :: (Ord a) => (Graph a) -> [(a, a)]
 edges (Graph verts _ forw) = concat $ map edgesFrom $ Set.toList verts
-  where edgesFrom = \v -> zip (repeat v) (forw ! v)
+  where edgesFrom = zip <$> repeat <*> (forw !)
 
 
 -- playing with type class instantiation so I can make lists do arithmetic

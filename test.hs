@@ -1,5 +1,7 @@
 -- import some stuff
 
+import Data.List
+
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -13,7 +15,7 @@ import Control.Applicative
 
 type AdjMap a = Map a [a]
 
-data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq, Show)
+data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq)
 
 vertex :: (Ord a) => a -> (Graph a) -> Bool
 vertex v (Graph verts _ _) = member v verts
@@ -86,6 +88,10 @@ withoutEdge (v, w) g@(Graph verts back forw)
 
 graph :: (Ord a) => [(a, a)] -> (Graph a)
 graph as = foldr withEdge (Graph Set.empty Map.empty Map.empty) as
+
+
+instance (Show a, Ord a) => Show (Graph a) where
+  show g = "graph " ++ (show $ sort $ edges g)
 
 
 -- playing with type class instantiation so I can make lists do arithmetic

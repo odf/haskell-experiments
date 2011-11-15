@@ -94,6 +94,32 @@ graph :: (Ord a) => [(a, a)] -> (Graph a)
 graph as = foldr withEdge (Graph Set.empty Map.empty Map.empty) as
 
 
+-- Chris Okasaki's persistent real-time queue
+
+data Queue a = Queue [a] [a] [a] deriving (Show)
+
+queue :: [a] -> [a] -> [a] -> Queue a
+queue front rear (x:xs) = Queue front rear xs
+queue [] [] []          = Queue [] [] []
+queue front rear []     = let front' = rotate front rear []
+                          in Queue front' [] front'
+
+rotate :: [a] -> [a] -> [a] -> [a]
+rotate (f:fs) (r:rs) a = f : rotate fs rs (r : a)
+rotate []     (r:rs) a = r : a
+
+push :: a -> Queue a -> Queue a
+push x (Queue front rear schedule) = queue front (x : rear) schedule
+
+first :: Queue a -> Maybe a
+first (Queue (f:fs) _ _) = Just f
+first _ = Nothing
+
+rest :: Queue a -> Queue a
+rest (Queue (f:fs) rear schedule) = queue fs rear schedule
+rest (Queue [] rear schedule) = queue [] rear schedule
+
+
 -- Generic graph traversal.
 
 traversal :: Ord a => (a -> [a]) -> Set a -> b -> 
@@ -113,6 +139,10 @@ maybeHead (x : xs) = Just x
 
 dfs :: Ord a => (a -> [a]) -> [a] -> [a]
 dfs adj sources = traversal adj Set.empty sources (:) maybeHead (\(x:xs) -> xs)
+
+bfs :: Ord a => (a -> [a]) -> [a] -> [a]
+bfs adj sources = traversal adj Set.empty todo push first rest
+  where todo = foldl (flip push) (queue [] [] []) sources
 
 
 -- playing with type class instantiation so I can make lists do arithmetic

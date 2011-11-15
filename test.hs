@@ -17,6 +17,10 @@ type AdjMap a = Map a [a]
 
 data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq)
 
+instance (Show a, Ord a) => Show (Graph a) where
+  show g = "graph " ++ (show $ sort $ edges g)
+
+
 vertex :: (Ord a) => a -> (Graph a) -> Bool
 vertex v (Graph verts _ _) = member v verts
 
@@ -90,8 +94,25 @@ graph :: (Ord a) => [(a, a)] -> (Graph a)
 graph as = foldr withEdge (Graph Set.empty Map.empty Map.empty) as
 
 
-instance (Show a, Ord a) => Show (Graph a) where
-  show g = "graph " ++ (show $ sort $ edges g)
+-- Generic graph traversal.
+
+traversal :: Ord a => (a -> [a]) -> Set a -> b -> 
+             (a -> b -> b) -> (b -> Maybe a) -> (b -> b) -> [a]
+traversal adj seen todo push head tail =
+  case (head todo) of
+    Nothing   -> []
+    Just node -> 
+      let new   = filter (\v -> not $ member v seen) $ adj node
+          todo' = foldr push (tail todo) new
+          seen' = foldr Set.insert seen (node : new)
+      in node : traversal adj seen' todo' push head tail 
+
+maybeHead :: [a] -> Maybe a
+maybeHead []       = Nothing
+maybeHead (x : xs) = Just x
+
+dfs :: Ord a => (a -> [a]) -> [a] -> [a]
+dfs adj sources = traversal adj Set.empty sources (:) maybeHead (\(x:xs) -> xs)
 
 
 -- playing with type class instantiation so I can make lists do arithmetic

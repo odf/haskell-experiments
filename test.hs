@@ -144,6 +144,11 @@ bfs :: Ord a => (a -> [a]) -> [a] -> [a]
 bfs adj sources = traversal adj Set.empty todo push first rest
   where todo = foldl (flip push) (queue [] [] []) sources
 
+byEdges ::(((a, a) -> [(a, a)]) -> [(a, a)] -> [(a, a)])
+          -> (a -> [a]) -> [a] -> [(a, a)] 
+byEdges method adj sources =
+  method (\(u,v) -> zip (repeat v) (adj v)) $ zip sources sources
+
 
 -- playing with type class instantiation so I can make lists do arithmetic
 

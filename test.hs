@@ -51,8 +51,8 @@ edges :: (Ord a) => (Graph a) -> [(a, a)]
 edges (Graph verts _ forw) = concat $ map edgesFrom $ Set.toList verts
   where edgesFrom = zip <$> repeat <*> (forw !)
 
-withVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
-withVertex v g@(Graph verts back forw)
+plusVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
+plusVertex v g@(Graph verts back forw)
   | vertex v g = g
   | otherwise  =
     let verts' = Set.insert v verts
@@ -60,8 +60,8 @@ withVertex v g@(Graph verts back forw)
         forw'  = Map.insert v [] forw
     in Graph verts' back' forw'
        
-withoutVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
-withoutVertex v g@(Graph verts back forw)
+minusVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
+minusVertex v g@(Graph verts back forw)
   | not $ vertex v g = g
   | otherwise  =
     let verts' = Set.delete v verts
@@ -70,18 +70,18 @@ withoutVertex v g@(Graph verts back forw)
         without = \v -> fmap (filter (/= v))
     in Graph verts' back' forw'
 
-withEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
-withEdge (v, w) g
+plusEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
+plusEdge (v, w) g
   | edge (v, w) g = g
   | otherwise  =
-    let (Graph verts back forw) = foldr withVertex g [v, w]
+    let (Graph verts back forw) = foldr plusVertex g [v, w]
         verts' = verts
         back'  = Map.insert w (back ! w ++ [v]) back
         forw'  = Map.insert v (forw ! v ++ [w]) forw
     in Graph verts' back' forw'
 
-withoutEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
-withoutEdge (v, w) g@(Graph verts back forw)
+minusEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
+minusEdge (v, w) g@(Graph verts back forw)
   | not $ edge (v, w) g = g
   | otherwise  =
     let verts' = verts
@@ -90,7 +90,7 @@ withoutEdge (v, w) g@(Graph verts back forw)
     in Graph verts' back' forw' 
 
 graph :: (Ord a) => [(a, a)] -> (Graph a)
-graph as = foldr withEdge (Graph Set.empty Map.empty Map.empty) as
+graph as = foldr plusEdge (Graph Set.empty Map.empty Map.empty) as
 
 
 -- Chris Okasaki's persistent real-time queue

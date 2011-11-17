@@ -1,12 +1,11 @@
 -- import some stuff
 
-import Data.List
-
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Data.Map (Map, (!))
 import Data.Set (Set, member)
+import Data.List (sort)
 
 import Control.Applicative
 
@@ -122,28 +121,40 @@ rest (Queue [] rear schedule) = queue [] rear schedule
 
 -- Generic graph traversal.
 
-traversal :: Ord a => (a -> [a]) -> Set a -> b -> 
-             (a -> b -> b) -> (b -> Maybe a) -> (b -> b) -> [a]
-traversal adj seen todo push head tail =
-  case (head todo) of
-    Nothing   -> []
-    Just node -> 
-      let new   = filter (\v -> not $ member v seen) $ adj node
-          todo' = foldr push (tail todo) new
-          seen' = foldr Set.insert seen (node : new)
-      in node : traversal adj seen' todo' push head tail 
+class TodoBag b where
+  pushTodo  :: a   -> b a -> b a
+  firstTodo :: b a -> Maybe a
+  restTodo  :: b a -> b a
 
-maybeHead :: [a] -> Maybe a
-maybeHead []       = Nothing
-maybeHead (x : xs) = Just x
+instance TodoBag [] where
+  pushTodo         = (:)
+  firstTodo []     = Nothing
+  firstTodo (x:xs) = Just x
+  restTodo  []     = []
+  restTodo  (x:xs) = xs
+
+instance TodoBag Queue where
+  pushTodo  = push
+  firstTodo = first
+  restTodo  = rest
+
+
+traversal :: (Ord a, TodoBag b) => (a -> [a]) -> Set a -> b a -> [a]
+traversal adj seen todo =
+  case (firstTodo todo) of
+    Nothing   -> []
+    Just node ->
+      let new   = filter (\v -> not $ member v seen) $ adj node
+          todo' = foldr pushTodo (restTodo todo) new
+          seen' = foldr Set.insert seen (node : new)
+      in node : traversal adj seen' todo'
 
 dfs :: Ord a => (a -> [a]) -> [a] -> [a]
-dfs adj sources = traversal adj Set.empty sources (:) maybeHead (\(x:xs) -> xs)
+dfs adj sources = traversal adj Set.empty sources
 
 bfs :: Ord a => (a -> [a]) -> [a] -> [a]
-bfs adj sources = traversal adj Set.empty todo push first rest
+bfs adj sources = traversal adj Set.empty todo   
   where todo = foldl (flip push) (queue [] [] []) sources
-
 
 type VorE a = Either a (a,a)
 

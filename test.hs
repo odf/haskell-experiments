@@ -188,7 +188,7 @@ byEdges method adj sources = method (liftAdj adj) $ map Left sources
 
 flow :: Ord a => AdjMap a -> [a] -> [VorE a]
 flow adj ranked = flow' candidates adj ranked
-  where candidates = filter ((==1) . length . (adj !)) ranked
+  where candidates = filterByNumberOfNeighbors 1 adj ranked
 
 flow' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
 flow' (c : cs) adj ranked = Right (c, d) : flow adj' ranked'
@@ -196,10 +196,14 @@ flow' (c : cs) adj ranked = Right (c, d) : flow adj' ranked'
         adj'    = fmap (filter (`notElem` [c, d])) $ foldr Map.delete adj [c, d]
         ranked' = filter (`notElem` [c, d]) ranked
 flow' [] adj ranked = flow'' candidates adj ranked
-  where candidates = filter (null . (adj !)) ranked
+  where candidates = filterByNumberOfNeighbors 0 adj ranked
 
 flow'' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
 flow'' (c : cs) adj ranked = Left c : flow adj' ranked'
   where adj'    = fmap (filter (/= c)) $ Map.delete c adj
         ranked' = filter (/= c) ranked
 flow'' [] _ _ = []
+
+filterByNumberOfNeighbors :: Ord a => Int -> AdjMap a -> [a] -> [a]
+filterByNumberOfNeighbors n adj list = filter ((==n) . length . getAdj) list
+  where getAdj = \v -> Map.findWithDefault [] v adj 

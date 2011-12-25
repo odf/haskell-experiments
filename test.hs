@@ -205,5 +205,5 @@ flow'' (c : cs) adj ranked = Left c : flow adj' ranked'
 flow'' [] _ _ = []
 
 filterByNumberOfNeighbors :: Ord a => Int -> AdjMap a -> [a] -> [a]
-filterByNumberOfNeighbors n adj list = filter ((==n) . length . getAdj) list
-  where getAdj = \v -> Map.findWithDefault [] v adj 
+filterByNumberOfNeighbors n adj = filter $ (==n) . length . getAdj
+  where getAdj = flip (Map.findWithDefault []) $ adj 

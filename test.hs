@@ -193,13 +193,13 @@ flow adj ranked = flow' candidates adj ranked
 flow' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
 flow' (c : cs) adj ranked = Right (c, d) : flow adj' ranked'
   where d       = head . (adj !) $ c
-        adj'    = fmap (filter (`notElem` [c, d])) adj
+        adj'    = fmap (filter (`notElem` [c, d])) $ foldr Map.delete adj [c, d]
         ranked' = filter (`notElem` [c, d]) ranked
 flow' [] adj ranked = flow'' candidates adj ranked
   where candidates = filter (null . (adj !)) ranked
 
 flow'' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
 flow'' (c : cs) adj ranked = Left c : flow adj' ranked'
-  where adj'    = fmap (filter (/= c)) adj
+  where adj'    = fmap (filter (/= c)) $ Map.delete c adj
         ranked' = filter (/= c) ranked
 flow'' [] _ _ = []

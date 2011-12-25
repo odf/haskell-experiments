@@ -186,24 +186,28 @@ byEdges method adj sources = method (liftAdj adj) $ map Left sources
 
 -- Computation of flow pairs and singular nodes in an ordered, directed graph
 
-flow :: Ord a => AdjMap a -> [a] -> [VorE a]
+flow :: Ord a => Map a [a] -> [a] -> [Either a (a,a)]
 flow adj ranked = flow' candidates adj ranked
-  where candidates = filterByNumberOfNeighbors 1 adj ranked
+  where candidates = filterByNeighborCount 1 adj ranked
 
-flow' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
+flow' :: Ord a => [a] -> Map a [a] -> [a] -> [Either a (a,a)]
 flow' (c : cs) adj ranked = Right (c, d) : flow adj' ranked'
   where d       = head . (adj !) $ c
-        adj'    = fmap (filter (`notElem` [c, d])) $ foldr Map.delete adj [c, d]
+        adj'    = withoutNodes [c, d] adj
         ranked' = filter (`notElem` [c, d]) ranked
 flow' [] adj ranked = flow'' candidates adj ranked
-  where candidates = filterByNumberOfNeighbors 0 adj ranked
+  where candidates = filterByNeighborCount 0 adj ranked
 
-flow'' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
+flow'' :: Ord a => [a] -> Map a [a] -> [a] -> [Either a (a,a)]
 flow'' (c : cs) adj ranked = Left c : flow adj' ranked'
-  where adj'    = fmap (filter (/= c)) $ Map.delete c adj
+  where adj'    = withoutNodes [c] adj
         ranked' = filter (/= c) ranked
 flow'' [] _ _ = []
 
-filterByNumberOfNeighbors :: Ord a => Int -> AdjMap a -> [a] -> [a]
-filterByNumberOfNeighbors n adj = filter $ (==n) . length . getAdj
+filterByNeighborCount :: Ord a => Int -> Map a [a] -> [a] -> [a]
+filterByNeighborCount n adj = filter $ (==n) . length . getAdj
   where getAdj = flip (Map.findWithDefault []) $ adj 
+
+withoutNodes :: Ord a => [a] -> Map a [a] -> Map a [a]
+withoutNodes nodes adj = 
+  fmap (filter (`notElem` nodes)) $ foldr Map.delete adj nodes

@@ -10,6 +10,23 @@ import Data.List (sort)
 import Control.Applicative
 
 
+-- playing with type class instantiation so I can make lists do arithmetic
+
+instance (Num a) => Num [a] where
+  (+)         = zipWith (+)
+  (-)         = zipWith (-)
+  (*)         = zipWith (*)
+  abs         = map abs
+  signum      = map signum
+  negate      = map negate
+  fromInteger = (:[]) . fromInteger
+
+instance (Fractional a) => Fractional [a] where
+  (/)          = zipWith (/)
+  recip        = map recip
+  fromRational = (:[]) . fromRational
+
+
 -- a data type for directed graphs (incomplete)
 
 type AdjMap a = Map a [a]
@@ -165,20 +182,3 @@ liftAdj adj (Right (u, v)) = liftAdj adj $ Left v
 byEdges ::((VorE a -> [VorE a]) -> [VorE a] -> [VorE a])
           -> (a -> [a]) -> [a] -> [VorE a] 
 byEdges method adj sources = method (liftAdj adj) $ map Left sources
-
-
--- playing with type class instantiation so I can make lists do arithmetic
-
-instance (Num a) => Num [a] where
-  (+)         = zipWith (+)
-  (-)         = zipWith (-)
-  (*)         = zipWith (*)
-  abs         = map abs
-  signum      = map signum
-  negate      = map negate
-  fromInteger = (:[]) . fromInteger
-
-instance (Fractional a) => Fractional [a] where
-  (/)          = zipWith (/)
-  recip        = map recip
-  fromRational = (:[]) . fromRational

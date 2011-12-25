@@ -182,3 +182,24 @@ liftAdj adj (Right (u, v)) = liftAdj adj $ Left v
 byEdges ::((VorE a -> [VorE a]) -> [VorE a] -> [VorE a])
           -> (a -> [a]) -> [a] -> [VorE a] 
 byEdges method adj sources = method (liftAdj adj) $ map Left sources
+
+
+-- Computation of flow pairs and singular nodes in an ordered, directed graph
+
+flow :: Ord a => AdjMap a -> [a] -> [VorE a]
+flow adj ranked = flow' candidates adj ranked
+  where candidates = filter ((==1) . length . (adj !)) ranked
+
+flow' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
+flow' (c : cs) adj ranked = Right (c, d) : flow adj' ranked'
+  where d       = head . (adj !) $ c
+        adj'    = fmap (filter (`notElem` [c, d])) adj
+        ranked' = filter (`notElem` [c, d]) ranked
+flow' [] adj ranked = flow'' candidates adj ranked
+  where candidates = filter (null . (adj !)) ranked
+
+flow'' :: Ord a => [a] -> AdjMap a -> [a] -> [VorE a]
+flow'' (c : cs) adj ranked = Left c : flow adj' ranked'
+  where adj'    = fmap (filter (/= c)) adj
+        ranked' = filter (/= c) ranked
+flow'' [] _ _ = []

@@ -4,7 +4,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Data.Map (Map, (!))
-import Data.Set (Set, member)
+import Data.Set (Set)
 import Data.List (sort)
 
 
@@ -34,14 +34,23 @@ data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq)
 instance (Show a, Ord a) => Show (Graph a) where
   show g = "graph " ++ (show $ sort $ edges g)
 
-data GraphItem a = Vertex a | Edge a a
+data GraphItem a = Vertex a | Edge a a deriving (Show, Ord, Eq)
 
 
 empty :: (Ord a) => Graph a
 empty = Graph Set.empty Map.empty Map.empty
 
+member :: (Ord a) => GraphItem a -> Graph a -> Bool
+member (Vertex v) (Graph verts _ _)  =
+  Set.member v verts
+member (Edge v w) g@(Graph _ _ forw) =
+  (member (Vertex v) g) && (elem w $ forw ! v)
+
+vertices :: (Ord a) => Graph a -> [a]
+vertices (Graph verts _ _) = Set.toList verts
+
 vertex :: (Ord a) => a -> (Graph a) -> Bool
-vertex v (Graph verts _ _) = member v verts
+vertex v g = member (Vertex v) g
 
 source :: (Ord a) => a -> (Graph a) -> Bool
 source v g@(Graph _ back _) = (vertex v g) && (null $ back ! v)
@@ -55,8 +64,12 @@ internal v g = (vertex v g) && (not $ source v g) && (not $ sink v g)
 isolated :: (Ord a) => a -> (Graph a) -> Bool
 isolated v g = (vertex v g) && (source v g) && (sink v g)
 
+edges :: (Ord a) => (Graph a) -> [GraphItem a]
+edges g@(Graph _ _ forw) = concat $ map edgesFrom $ vertices g
+  where edgesFrom v = zipWith Edge (repeat v) (forw ! v)
+
 edge :: (Ord a) => (a, a) -> (Graph a) -> Bool
-edge (v, w) g@(Graph _ _ forw) = (vertex v g) && (elem w $ forw ! v)
+edge (v, w) g = member (Edge v w) g
 
 succs :: (Ord a) => a -> (Graph a) -> [a]
 succs v (Graph _ _ forw) = forw ! v
@@ -67,43 +80,41 @@ preds v (Graph _ back _) = back ! v
 adjs :: (Ord a) => a -> (Graph a) -> [a]
 adjs v g = (succs v g) ++ (preds v g)
 
-edges :: (Ord a) => (Graph a) -> [(a, a)]
-edges (Graph verts _ forw) = concat $ map edgesFrom $ Set.toList verts
-  where edgesFrom v = zip (repeat v) (forw ! v)
-
 insert :: (Ord a) => GraphItem a -> Graph a -> Graph a
-insert (Vertex v) g@(Graph verts back forw)
-  | vertex v g = g
-  | otherwise  =
-    let verts' = Set.insert v verts
-        back'  = Map.insert v [] back
-        forw'  = Map.insert v [] forw
-    in Graph verts' back' forw'
-insert (Edge v w) g
-  | edge (v, w) g = g
-  | otherwise  =
-    let (Graph verts back forw) = foldr insert g $ map Vertex [v, w]
-        verts' = verts
-        back'  = Map.insert w (back ! w ++ [v]) back
-        forw'  = Map.insert v (forw ! v ++ [w]) forw
-    in Graph verts' back' forw'
+insert item g
+  | member item g = g
+  | otherwise     = insert' item g
+
+insert' :: (Ord a) => GraphItem a -> Graph a -> Graph a
+insert' (Vertex v) g@(Graph verts back forw) =
+  let verts' = Set.insert v verts
+      back'  = Map.insert v [] back
+      forw'  = Map.insert v [] forw
+  in Graph verts' back' forw'
+insert' (Edge v w) g =
+  let (Graph verts back forw) = foldr insert g $ map Vertex [v, w]
+      verts' = verts
+      back'  = Map.insert w (back ! w ++ [v]) back
+      forw'  = Map.insert v (forw ! v ++ [w]) forw
+  in Graph verts' back' forw'
 
 delete :: (Ord a) => GraphItem a -> Graph a -> Graph a
-delete (Vertex v) g@(Graph verts back forw)
-  | not $ vertex v g = g
-  | otherwise  =
-    let verts'    = Set.delete v verts
-        back'     = Map.delete v $ without v back
-        forw'     = Map.delete v $ without v forw
-        without v = fmap (filter (/= v))
-    in Graph verts' back' forw'
-delete (Edge v w) g@(Graph verts back forw)
-  | not $ edge (v, w) g = g
-  | otherwise  =
-    let verts' = verts
-        back'  = Map.insert w (filter (/= v) $ back ! w) back
-        forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
-    in Graph verts' back' forw' 
+delete item g
+  | not $ member item g = g
+  | otherwise           = delete' item g
+
+delete' :: (Ord a) => GraphItem a -> Graph a -> Graph a
+delete' (Vertex v) g@(Graph verts back forw) =
+  let verts'    = Set.delete v verts
+      back'     = Map.delete v $ without v back
+      forw'     = Map.delete v $ without v forw
+      without v = fmap (filter (/= v))
+  in Graph verts' back' forw'
+delete' (Edge v w) g@(Graph verts back forw) =
+  let verts' = verts
+      back'  = Map.insert w (filter (/= v) $ back ! w) back
+      forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
+  in Graph verts' back' forw' 
 
 graph :: (Ord a) => [(a, a)] -> Graph a
 graph as = foldr insert empty $ map pairToEdge as
@@ -161,7 +172,7 @@ traversal adj seen todo =
   case (firstTodo todo) of
     Nothing   -> []
     Just node ->
-      let new   = filter (\v -> not $ member v seen) $ adj node
+      let new   = filter (\v -> not $ Set.member v seen) $ adj node
           todo' = foldr pushTodo (restTodo todo) new
           seen' = foldr Set.insert seen (node : new)
       in node : traversal adj seen' todo'

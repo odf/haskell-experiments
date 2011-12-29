@@ -7,8 +7,6 @@ import Data.Map (Map, (!))
 import Data.Set (Set, member)
 import Data.List (sort)
 
-import Control.Applicative
-
 
 -- playing with type class instantiation so I can make lists do arithmetic
 
@@ -36,6 +34,11 @@ data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq)
 instance (Show a, Ord a) => Show (Graph a) where
   show g = "graph " ++ (show $ sort $ edges g)
 
+data GraphItem a = Vertex a | Edge a a
+
+
+empty :: (Ord a) => Graph a
+empty = Graph Set.empty Map.empty Map.empty
 
 vertex :: (Ord a) => a -> (Graph a) -> Bool
 vertex v (Graph verts _ _) = member v verts
@@ -66,39 +69,35 @@ adjs v g = (succs v g) ++ (preds v g)
 
 edges :: (Ord a) => (Graph a) -> [(a, a)]
 edges (Graph verts _ forw) = concat $ map edgesFrom $ Set.toList verts
-  where edgesFrom = zip <$> repeat <*> (forw !)
+  where edgesFrom v = zip (repeat v) (forw ! v)
 
-plusVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
-plusVertex v g@(Graph verts back forw)
+insert :: (Ord a) => GraphItem a -> Graph a -> Graph a
+insert (Vertex v) g@(Graph verts back forw)
   | vertex v g = g
   | otherwise  =
     let verts' = Set.insert v verts
         back'  = Map.insert v [] back
         forw'  = Map.insert v [] forw
     in Graph verts' back' forw'
-       
-minusVertex :: (Ord a) => a -> (Graph a) -> (Graph a)
-minusVertex v g@(Graph verts back forw)
-  | not $ vertex v g = g
-  | otherwise  =
-    let verts' = Set.delete v verts
-        back'  = Map.delete v $ without v back
-        forw'  = Map.delete v $ without v forw
-        without = \v -> fmap (filter (/= v))
-    in Graph verts' back' forw'
-
-plusEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
-plusEdge (v, w) g
+insert (Edge v w) g
   | edge (v, w) g = g
   | otherwise  =
-    let (Graph verts back forw) = foldr plusVertex g [v, w]
+    let (Graph verts back forw) = foldr insert g $ map Vertex [v, w]
         verts' = verts
         back'  = Map.insert w (back ! w ++ [v]) back
         forw'  = Map.insert v (forw ! v ++ [w]) forw
     in Graph verts' back' forw'
 
-minusEdge :: (Ord a) => (a, a) -> (Graph a) -> (Graph a)
-minusEdge (v, w) g@(Graph verts back forw)
+delete :: (Ord a) => GraphItem a -> Graph a -> Graph a
+delete (Vertex v) g@(Graph verts back forw)
+  | not $ vertex v g = g
+  | otherwise  =
+    let verts'    = Set.delete v verts
+        back'     = Map.delete v $ without v back
+        forw'     = Map.delete v $ without v forw
+        without v = fmap (filter (/= v))
+    in Graph verts' back' forw'
+delete (Edge v w) g@(Graph verts back forw)
   | not $ edge (v, w) g = g
   | otherwise  =
     let verts' = verts
@@ -106,8 +105,9 @@ minusEdge (v, w) g@(Graph verts back forw)
         forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
     in Graph verts' back' forw' 
 
-graph :: (Ord a) => [(a, a)] -> (Graph a)
-graph as = foldr plusEdge (Graph Set.empty Map.empty Map.empty) as
+graph :: (Ord a) => [(a, a)] -> Graph a
+graph as = foldr insert empty $ map pairToEdge as
+  where pairToEdge (v, w) = Edge v w
 
 
 -- Chris Okasaki's persistent real-time queue

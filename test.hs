@@ -27,12 +27,12 @@ instance (Fractional a) => Fractional [a] where
 
 -- a data type for directed graphs (incomplete)
 
-type AdjMap a = Map a [a]
-
-data Graph a = Graph (Set a) (AdjMap a) (AdjMap a) deriving (Eq)
+data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
 
 instance (Show a, Ord a) => Show (Graph a) where
-  show g = "graph " ++ (show $ sort $ edges g)
+  show g = "graph " ++ show (sort (edges g) ++ sort extraVertices)
+    where extraVertices = filter (flip isolated $ g) $ vertices g
+
 
 data GraphItem a = Vertex a | Edge a a deriving (Show, Ord, Eq)
 
@@ -46,38 +46,34 @@ member (Vertex v) (Graph verts _ _)  =
 member (Edge v w) g@(Graph _ _ forw) =
   (member (Vertex v) g) && (elem w $ forw ! v)
 
-vertices :: (Ord a) => Graph a -> [a]
-vertices (Graph verts _ _) = Set.toList verts
+vertices :: (Ord a) => Graph a -> [GraphItem a]
+vertices (Graph verts _ _) = map Vertex $ Set.toList verts
 
-vertex :: (Ord a) => a -> (Graph a) -> Bool
-vertex v g = member (Vertex v) g
+source :: (Ord a) => GraphItem a -> Graph a -> Bool
+source i@(Vertex v) g@(Graph _ back _) = (member i g) && (null $ back ! v)
+source _ _ = False
 
-source :: (Ord a) => a -> (Graph a) -> Bool
-source v g@(Graph _ back _) = (vertex v g) && (null $ back ! v)
+sink :: (Ord a) => GraphItem a -> Graph a -> Bool
+sink i@(Vertex v) g@(Graph _ _ forw) = (member i g) && (null $ forw ! v)
+sink _ _ = False
 
-sink :: (Ord a) => a -> (Graph a) -> Bool
-sink v g@(Graph _ _ forw) = (vertex v g) && (null $ forw ! v)
+internal :: (Ord a) => GraphItem a -> Graph a -> Bool
+internal v g = (member v g) && (not $ source v g) && (not $ sink v g)
 
-internal :: (Ord a) => a -> (Graph a) -> Bool
-internal v g = (vertex v g) && (not $ source v g) && (not $ sink v g)
+isolated :: (Ord a) => GraphItem a -> Graph a -> Bool
+isolated v g = (member v g) && (source v g) && (sink v g)
 
-isolated :: (Ord a) => a -> (Graph a) -> Bool
-isolated v g = (vertex v g) && (source v g) && (sink v g)
-
-edges :: (Ord a) => (Graph a) -> [GraphItem a]
+edges :: (Ord a) => Graph a -> [GraphItem a]
 edges g@(Graph _ _ forw) = concat $ map edgesFrom $ vertices g
-  where edgesFrom v = zipWith Edge (repeat v) (forw ! v)
+  where edgesFrom (Vertex v) = zipWith Edge (repeat v) (forw ! v)
 
-edge :: (Ord a) => (a, a) -> (Graph a) -> Bool
-edge (v, w) g = member (Edge v w) g
+succs :: (Ord a) => GraphItem a -> Graph a -> [GraphItem a]
+succs (Vertex v) (Graph _ _ forw) = map Vertex $ forw ! v
 
-succs :: (Ord a) => a -> (Graph a) -> [a]
-succs v (Graph _ _ forw) = forw ! v
+preds :: (Ord a) => GraphItem a -> Graph a -> [GraphItem a]
+preds (Vertex v) (Graph _ back _) = map Vertex $ back ! v
 
-preds :: (Ord a) => a -> (Graph a) -> [a]
-preds v (Graph _ back _) = back ! v
-
-adjs :: (Ord a) => a -> (Graph a) -> [a]
+adjs :: (Ord a) => GraphItem a -> (Graph a) -> [GraphItem a]
 adjs v g = (succs v g) ++ (preds v g)
 
 insert :: (Ord a) => GraphItem a -> Graph a -> Graph a
@@ -116,9 +112,8 @@ delete' (Edge v w) g@(Graph verts back forw) =
       forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
   in Graph verts' back' forw' 
 
-graph :: (Ord a) => [(a, a)] -> Graph a
-graph as = foldr insert empty $ map pairToEdge as
-  where pairToEdge (v, w) = Edge v w
+graph :: (Ord a) => [GraphItem a] -> Graph a
+graph = foldr insert empty
 
 
 -- Chris Okasaki's persistent real-time queue

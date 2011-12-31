@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, UndecidableInstances, OverlappingInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances,
+             UndecidableInstances, OverlappingInstances #-}
 
 -- a data type for directed graphs (incomplete)
 
@@ -13,8 +14,12 @@ import Data.List (sort)
 
 
 data GraphItem a = Vertex { label :: a }
-                 | Edge { from :: a, to :: a }
-  deriving (Show, Ord, Eq)
+                 | Edge { from :: a, to :: a } deriving (Ord, Eq)
+
+instance Show a => Show (GraphItem a) where
+  show (Vertex v) = "Vertex " ++ show v
+  show (Edge v w) = "Edge " ++ show v ++ " " ++ show w
+
 
 class Reticular a ra | ra -> a where
   empty    :: ra

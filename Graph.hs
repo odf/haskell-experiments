@@ -41,20 +41,8 @@ class Reticular a ra | ra -> a where
     where outOf item   = zipWith makeEdge (repeat item) (succs graph item)
           makeEdge v w = Edge (label v) (label w)
 
-  insertAll :: ra -> [GraphItem a] -> ra
-  insertAll = foldl insert
-
-  deleteAll :: ra -> [GraphItem a] -> ra
-  deleteAll = foldl delete
-
   graph :: [GraphItem a] -> ra
-  graph = insertAll empty
-
-(+/) :: (Reticular a ra) => ra -> GraphItem a -> ra
-(+/) = insert
-
-(-/) :: (Reticular a ra) => ra -> GraphItem a -> ra
-(-/) = delete
+  graph = (empty +/)
 
 source :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
 source graph item@(Vertex _) =
@@ -75,6 +63,23 @@ isolated g v = (contains g v) && (source g v) && (sink g v)
 instance (Eq a, Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g
+
+
+class RPart a pa | pa -> a where
+  (+/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
+  (-/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
+
+instance RPart a (GraphItem a) where
+  (+/) = insert
+  (-/) = delete
+
+instance RPart a [GraphItem a] where
+  (+/) = foldl insert
+  (-/) = foldl delete
+
+instance (Reticular a ra) => RPart a ra where
+  graph +/ graph' = graph +/ (vertices graph') +/ (edges graph')
+  graph -/ graph' = graph -/ (edges graph')
 
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)

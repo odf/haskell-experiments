@@ -24,52 +24,57 @@ instance Show a => Show (GraphItem a) where
 class Reticular a ra | ra -> a where
   empty    :: ra
   vertices :: ra -> [GraphItem a]
-  succs    :: GraphItem a -> ra -> [GraphItem a]
-  preds    :: GraphItem a -> ra -> [GraphItem a]
-  insert   :: GraphItem a -> ra -> ra
-  delete   :: GraphItem a -> ra -> ra
+  succs    :: ra -> GraphItem a -> [GraphItem a]
+  preds    :: ra -> GraphItem a -> [GraphItem a]
+  insert   :: ra -> GraphItem a -> ra
+  delete   :: ra -> GraphItem a -> ra
 
-  member   :: (Eq a) => GraphItem a -> ra -> Bool
-  member item@(Vertex _) = (item `elem`) . vertices
-  member item@(Edge _ _) = (item `elem`) . edges
+  contains   :: (Eq a) => ra -> GraphItem a -> Bool
+  contains g item@(Vertex _) = item `elem` vertices g
+  contains g item@(Edge _ _) = item `elem` edges g
 
-  adjs     :: GraphItem a -> ra -> [GraphItem a]
-  adjs item graph = (preds item graph) ++ (succs item graph)
+  adjs     :: ra -> GraphItem a -> [GraphItem a]
+  adjs graph item = (preds graph item) ++ (succs graph item)
 
   edges    :: ra -> [GraphItem a]
   edges graph = concat $ map outOf $ vertices graph
-    where outOf item   = zipWith makeEdge (repeat item) (succs item graph)
+    where outOf item   = zipWith makeEdge (repeat item) (succs graph item)
           makeEdge v w = Edge (label v) (label w)
 
-  insertAll :: [GraphItem a] -> ra -> ra
-  insertAll = flip $ foldr insert
+  insertAll :: ra -> [GraphItem a] -> ra
+  insertAll = foldl insert
 
-  deleteAll :: [GraphItem a] -> ra -> ra
-  deleteAll = flip $ foldr delete
+  deleteAll :: ra -> [GraphItem a] -> ra
+  deleteAll = foldl delete
 
   graph :: [GraphItem a] -> ra
-  graph = (`insertAll` empty)
+  graph = insertAll empty
 
+(+/) :: (Reticular a ra) => ra -> GraphItem a -> ra
+(+/) = insert
 
-source :: (Eq a, Reticular a ra) => GraphItem a -> ra -> Bool
-source item@(Vertex _) graph =
-  (member item graph) && (null $ preds item graph)
+(-/) :: (Reticular a ra) => ra -> GraphItem a -> ra
+(-/) = delete
+
+source :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+source graph item@(Vertex _) =
+  (contains graph item) && (null $ preds graph item)
 source _ _ = False
 
-sink :: (Eq a, Reticular a ra) => GraphItem a -> ra -> Bool
-sink item@(Vertex _) graph =
-  (member item graph) && (null $ succs item graph)
+sink :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+sink graph item@(Vertex _) =
+  (contains graph item) && (null $ succs graph item)
 sink _ _ = False
 
-internal :: (Eq a, Reticular a ra) => GraphItem a -> ra -> Bool
-internal v g = (member v g) && (not $ source v g) && (not $ sink v g)
+internal :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+internal g v = (contains g v) && (not $ source g v) && (not $ sink g v)
 
-isolated :: (Eq a, Reticular a ra) => GraphItem a -> ra -> Bool
-isolated v g = (member v g) && (source v g) && (sink v g)
+isolated :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+isolated g v = (contains g v) && (source g v) && (sink g v)
 
 instance (Eq a, Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
-    where isolatedVertices = filter (`isolated` g) $ vertices g
+    where isolatedVertices = filter (isolated g) $ vertices g
 
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
@@ -77,21 +82,21 @@ data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
 instance (Ord a) => Reticular a (Graph a) where
   empty                             = Graph Set.empty Map.empty Map.empty
   vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
-  succs (Vertex v) (Graph _ _ forw) = map Vertex $ forw ! v
-  preds (Vertex v) (Graph _ back _) = map Vertex $ back ! v
+  succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
+  preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
 
-  insert item g
-    | member item g = g
-    | otherwise     = insert' item g
+  insert g item
+    | contains g item = g
+    | otherwise       = insert' item g
 
-  delete item g
-    | not $ member item g = g
-    | otherwise           = delete' item g
+  delete g item
+    | not $ contains g item = g
+    | otherwise             = delete' item g
 
-  member (Vertex v) (Graph verts _ _)  =
+  contains (Graph verts _ _) (Vertex v) =
     Set.member v verts
-  member (Edge v w) g@(Graph _ _ forw) =
-    (member (Vertex v) g) && (elem w $ forw ! v)
+  contains g@(Graph _ _ forw) (Edge v w) =
+    (contains g (Vertex v)) && (elem w $ forw ! v)
 
 
 insert' :: (Ord a) => GraphItem a -> Graph a -> Graph a
@@ -101,7 +106,7 @@ insert' (Vertex v) (Graph verts back forw) =
       forw'  = Map.insert v [] forw
   in Graph verts' back' forw'
 insert' (Edge v w) g =
-  let (Graph verts back forw) = foldr insert g $ map Vertex [v, w]
+  let (Graph verts back forw) = foldl insert g $ map Vertex [v, w]
       verts' = verts
       back'  = Map.insert w (back ! w ++ [v]) back
       forw'  = Map.insert v (forw ! v ++ [w]) forw
@@ -122,4 +127,4 @@ delete' (Edge v w) (Graph verts back forw) =
 
 instance (Ord a, Show a) => Show (Graph a) where
   show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)
-    where isolatedVertices = filter (`isolated` g) $ vertices g
+    where isolatedVertices = filter (isolated g) $ vertices g

@@ -78,8 +78,8 @@ instance RPart a [GraphItem a] where
   (-/) = foldl delete
 
 instance (Reticular a ra) => RPart a ra where
-  graph +/ graph' = graph +/ (vertices graph') +/ (edges graph')
-  graph -/ graph' = graph -/ (edges graph')
+  graph +/ graph' = graph +/ vertices graph' +/ edges graph'
+  graph -/ graph' = graph -/ edges graph'
 
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)

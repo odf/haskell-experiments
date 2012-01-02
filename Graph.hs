@@ -22,7 +22,6 @@ instance Show a => Show (GraphItem a) where
 
 
 class Reticular a ra | ra -> a where
-  empty    :: ra
   vertices :: ra -> [GraphItem a]
   succs    :: ra -> GraphItem a -> [GraphItem a]
   preds    :: ra -> GraphItem a -> [GraphItem a]
@@ -40,9 +39,6 @@ class Reticular a ra | ra -> a where
   edges graph = concat $ map outOf $ vertices graph
     where outOf item   = zipWith makeEdge (repeat item) (succs graph item)
           makeEdge v w = Edge (label v) (label w)
-
-  graph :: [GraphItem a] -> ra
-  graph = (empty +/)
 
 source :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
 source graph item@(Vertex _) =
@@ -64,7 +60,6 @@ instance (Eq a, Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g
 
-
 class RPart a pa | pa -> a where
   (+/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
   (-/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
@@ -84,51 +79,47 @@ instance (Reticular a ra) => RPart a ra where
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
 
+graph :: Ord a => [GraphItem a] -> Graph a
+graph = (Graph Set.empty Map.empty Map.empty +/)
+
+
 instance (Ord a) => Reticular a (Graph a) where
-  empty                             = Graph Set.empty Map.empty Map.empty
   vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
   succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
   preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
 
-  insert g item
+  insert g@(Graph verts back forw) item@(Vertex v)
     | hasItem g item = g
-    | otherwise      = insert' item g
+    | otherwise = Graph verts' back' forw'
+        where verts' = Set.insert v verts
+              back'  = Map.insert v [] back
+              forw'  = Map.insert v [] forw
+  insert g item@(Edge v w)
+    | hasItem g item = g
+    | otherwise = Graph verts' back' forw'
+        where (Graph verts back forw) = g +/ map Vertex [v, w]
+              verts' = verts
+              back'  = Map.insert w (back ! w ++ [v]) back
+              forw'  = Map.insert v (forw ! v ++ [w]) forw
 
-  delete g item
+  delete g@(Graph verts back forw) item@(Vertex v)
     | not $ hasItem g item = g
-    | otherwise            = delete' item g
+    | otherwise            = Graph verts' back' forw'
+        where verts'    = Set.delete v verts
+              back'     = Map.delete v $ without v back
+              forw'     = Map.delete v $ without v forw
+              without v = fmap (filter (/= v))
+  delete g@(Graph verts back forw) item@(Edge v w)
+    | not $ hasItem g item = g
+    | otherwise            = Graph verts' back' forw'
+        where verts' = verts
+              back'  = Map.insert w (filter (/= v) $ back ! w) back
+              forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
 
   hasItem (Graph verts _ _) (Vertex v) =
     Set.member v verts
   hasItem g@(Graph _ _ forw) (Edge v w) =
     (hasItem g (Vertex v)) && (elem w $ forw ! v)
-
-
-insert' :: (Ord a) => GraphItem a -> Graph a -> Graph a
-insert' (Vertex v) (Graph verts back forw) =
-  let verts' = Set.insert v verts
-      back'  = Map.insert v [] back
-      forw'  = Map.insert v [] forw
-  in Graph verts' back' forw'
-insert' (Edge v w) g =
-  let (Graph verts back forw) = foldl insert g $ map Vertex [v, w]
-      verts' = verts
-      back'  = Map.insert w (back ! w ++ [v]) back
-      forw'  = Map.insert v (forw ! v ++ [w]) forw
-  in Graph verts' back' forw'
-
-delete' :: (Ord a) => GraphItem a -> Graph a -> Graph a
-delete' (Vertex v) (Graph verts back forw) =
-  let verts'    = Set.delete v verts
-      back'     = Map.delete v $ without v back
-      forw'     = Map.delete v $ without v forw
-      without v = fmap (filter (/= v))
-  in Graph verts' back' forw'
-delete' (Edge v w) (Graph verts back forw) =
-  let verts' = verts
-      back'  = Map.insert w (filter (/= v) $ back ! w) back
-      forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
-  in Graph verts' back' forw' 
 
 instance (Ord a, Show a) => Show (Graph a) where
   show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)

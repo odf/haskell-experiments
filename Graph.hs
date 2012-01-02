@@ -29,9 +29,9 @@ class Reticular a ra | ra -> a where
   insert   :: ra -> GraphItem a -> ra
   delete   :: ra -> GraphItem a -> ra
 
-  contains   :: (Eq a) => ra -> GraphItem a -> Bool
-  contains g item@(Vertex _) = item `elem` vertices g
-  contains g item@(Edge _ _) = item `elem` edges g
+  hasItem   :: (Eq a) => ra -> GraphItem a -> Bool
+  hasItem g item@(Vertex _) = item `elem` vertices g
+  hasItem g item@(Edge _ _) = item `elem` edges g
 
   adjs     :: ra -> GraphItem a -> [GraphItem a]
   adjs graph item = (preds graph item) ++ (succs graph item)
@@ -46,19 +46,19 @@ class Reticular a ra | ra -> a where
 
 source :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
 source graph item@(Vertex _) =
-  (contains graph item) && (null $ preds graph item)
+  (hasItem graph item) && (null $ preds graph item)
 source _ _ = False
 
 sink :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
 sink graph item@(Vertex _) =
-  (contains graph item) && (null $ succs graph item)
+  (hasItem graph item) && (null $ succs graph item)
 sink _ _ = False
 
 internal :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
-internal g v = (contains g v) && (not $ source g v) && (not $ sink g v)
+internal g v = (hasItem g v) && (not $ source g v) && (not $ sink g v)
 
 isolated :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
-isolated g v = (contains g v) && (source g v) && (sink g v)
+isolated g v = (hasItem g v) && (source g v) && (sink g v)
 
 instance (Eq a, Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
@@ -91,17 +91,17 @@ instance (Ord a) => Reticular a (Graph a) where
   preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
 
   insert g item
-    | contains g item = g
-    | otherwise       = insert' item g
+    | hasItem g item = g
+    | otherwise      = insert' item g
 
   delete g item
-    | not $ contains g item = g
-    | otherwise             = delete' item g
+    | not $ hasItem g item = g
+    | otherwise            = delete' item g
 
-  contains (Graph verts _ _) (Vertex v) =
+  hasItem (Graph verts _ _) (Vertex v) =
     Set.member v verts
-  contains g@(Graph _ _ forw) (Edge v w) =
-    (contains g (Vertex v)) && (elem w $ forw ! v)
+  hasItem g@(Graph _ _ forw) (Edge v w) =
+    (hasItem g (Vertex v)) && (elem w $ forw ! v)
 
 
 insert' :: (Ord a) => GraphItem a -> Graph a -> Graph a

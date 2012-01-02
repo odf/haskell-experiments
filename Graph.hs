@@ -21,42 +21,47 @@ instance Show a => Show (GraphItem a) where
   show (Edge v w) = "Edge " ++ show v ++ " " ++ show w
 
 
-class Reticular a ra | ra -> a where
+class Eq a => Reticular a ra | ra -> a where
   vertices :: ra -> [GraphItem a]
+  edges    :: ra -> [GraphItem a]
+  items    :: ra -> [GraphItem a]
   succs    :: ra -> GraphItem a -> [GraphItem a]
   preds    :: ra -> GraphItem a -> [GraphItem a]
+  adjs     :: ra -> GraphItem a -> [GraphItem a]
+  hasItem  :: ra -> GraphItem a -> Bool
   insert   :: ra -> GraphItem a -> ra
   delete   :: ra -> GraphItem a -> ra
 
-  hasItem   :: (Eq a) => ra -> GraphItem a -> Bool
-  hasItem g item@(Vertex _) = item `elem` vertices g
-  hasItem g item@(Edge _ _) = item `elem` edges g
+  edges graph = [edge v w | v <- vertices graph, w <- succs graph v]
+    where edge v w = Edge (label v) (label w)
 
-  adjs     :: ra -> GraphItem a -> [GraphItem a]
+  items graph = (vertices graph) ++ (edges graph)
+
+  succs graph (Vertex v) = [Vertex $ to e | e <- edges graph, from e == v]
+
+  preds graph (Vertex w) = [Vertex $ from e | e <- edges graph, to e == w]
+
   adjs graph item = (preds graph item) ++ (succs graph item)
 
-  edges    :: ra -> [GraphItem a]
-  edges graph = concat $ map outOf $ vertices graph
-    where outOf item   = zipWith makeEdge (repeat item) (succs graph item)
-          makeEdge v w = Edge (label v) (label w)
+  hasItem graph = (`elem` items graph)
 
-source :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+source :: Reticular a ra => ra -> GraphItem a -> Bool
 source graph item@(Vertex _) =
   (hasItem graph item) && (null $ preds graph item)
 source _ _ = False
 
-sink :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+sink :: Reticular a ra => ra -> GraphItem a -> Bool
 sink graph item@(Vertex _) =
   (hasItem graph item) && (null $ succs graph item)
 sink _ _ = False
 
-internal :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+internal :: Reticular a ra => ra -> GraphItem a -> Bool
 internal g v = (hasItem g v) && (not $ source g v) && (not $ sink g v)
 
-isolated :: (Eq a, Reticular a ra) => ra -> GraphItem a -> Bool
+isolated :: Reticular a ra => ra -> GraphItem a -> Bool
 isolated g v = (hasItem g v) && (source g v) && (sink g v)
 
-instance (Eq a, Show a, Reticular a ra) => Show ra where
+instance (Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g
 

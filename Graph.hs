@@ -38,8 +38,10 @@ class Eq a => Reticular a ra | ra -> a where
   items graph = (vertices graph) ++ (edges graph)
 
   succs graph (Vertex v) = [Vertex $ to e | e <- edges graph, from e == v]
+  succs graph (Edge v w) = [Edge w $ label u | u <- succs graph (Vertex w)]
 
   preds graph (Vertex w) = [Vertex $ from e | e <- edges graph, to e == w]
+  preds graph (Edge v w) = [Edge (label u) v | u <- preds graph (Vertex v)]
 
   adjs graph item = (preds graph item) ++ (succs graph item)
 
@@ -90,8 +92,12 @@ graph = (Graph Set.empty Map.empty Map.empty +/)
 
 instance (Ord a) => Reticular a (Graph a) where
   vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
+  
   succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
+  succs graph (Edge v w) = [Edge w $ label u | u <- succs graph (Vertex w)]
+  
   preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
+  preds graph (Edge v w) = [Edge (label u) v | u <- preds graph (Vertex v)]
 
   insert g@(Graph verts back forw) item@(Vertex v)
     | hasItem g item = g

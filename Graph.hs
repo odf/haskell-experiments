@@ -129,8 +129,8 @@ instance (Ord a) => Reticular a (Graph a) where
 
   hasItem (Graph verts _ _) (Vertex v) =
     Set.member v verts
-  hasItem g@(Graph _ _ forw) (Edge v w) =
-    (hasItem g (Vertex v)) && (elem w $ forw ! v)
+  hasItem g@(Graph verts _ forw) (Edge v w) =
+    Set.member v verts && (elem w $ forw ! v)
 
 instance (Ord a, Show a) => Show (Graph a) where
   show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)

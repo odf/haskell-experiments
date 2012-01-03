@@ -110,8 +110,8 @@ instance (Ord a) => Reticular a (Graph a) where
     | otherwise = Graph verts' back' forw'
         where (Graph verts back forw) = g +/ map Vertex [v, w]
               verts' = verts
-              back'  = Map.insert w (back ! w ++ [v]) back
-              forw'  = Map.insert v (forw ! v ++ [w]) forw
+              back'  = Map.insertWith' (flip (++)) w [v] back
+              forw'  = Map.insertWith' (flip (++)) v [w] forw
 
   delete g@(Graph verts back forw) item@(Vertex v)
     | not $ hasItem g item = g

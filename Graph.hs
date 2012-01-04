@@ -124,8 +124,8 @@ instance (Ord a) => Reticular a (Graph a) where
     | not $ hasItem g item = g
     | otherwise            = Graph verts' back' forw'
         where verts' = verts
-              back'  = Map.insert w (filter (/= v) $ back ! w) back
-              forw'  = Map.insert v (filter (/= w) $ forw ! v) forw
+              back'  = Map.insertWith (const . filter (/= v)) w [] back
+              forw'  = Map.insertWith (const . filter (/= w)) v [] back
 
   hasItem (Graph verts _ _) (Vertex v) =
     Set.member v verts

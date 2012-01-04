@@ -29,8 +29,6 @@ class Eq a => Reticular a ra | ra -> a where
   preds    :: ra -> GraphItem a -> [GraphItem a]
   adjs     :: ra -> GraphItem a -> [GraphItem a]
   hasItem  :: ra -> GraphItem a -> Bool
-  insert   :: ra -> GraphItem a -> ra
-  delete   :: ra -> GraphItem a -> ra
 
   edges graph = [edge v w | v <- vertices graph, w <- succs graph v]
     where edge v w = Edge (label v) (label w)
@@ -67,9 +65,35 @@ instance (Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g
 
+
+data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
+
+instance (Ord a) => Reticular a (Graph a) where
+  vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
+  
+  succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
+  succs graph (Edge v w) = [Edge w $ label u | u <- succs graph (Vertex w)]
+  
+  preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
+  preds graph (Edge v w) = [Edge (label u) v | u <- preds graph (Vertex v)]
+
+  hasItem (Graph verts _ _) (Vertex v) =
+    Set.member v verts
+  hasItem g@(Graph verts _ forw) (Edge v w) =
+    Set.member v verts && (elem w $ forw ! v)
+  
+instance (Ord a, Show a) => Show (Graph a) where
+  show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)
+    where isolatedVertices = filter (isolated g) $ vertices g
+
+
+class Reticular a ra => EditableReticular a ra where
+  insert :: ra -> GraphItem a -> ra
+  delete :: ra -> GraphItem a -> ra
+
 class RPart a pa | pa -> a where
-  (+/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
-  (-/) :: (RPart a pa, Reticular a ra) => ra -> pa -> ra
+  (+/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
+  (-/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
 
 instance RPart a (GraphItem a) where
   (+/) = insert
@@ -84,21 +108,7 @@ instance (Reticular a ra) => RPart a ra where
   graph -/ graph' = graph -/ edges graph'
 
 
-data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
-
-graph :: Ord a => [GraphItem a] -> Graph a
-graph = (Graph Set.empty Map.empty Map.empty +/)
-
-
-instance (Ord a) => Reticular a (Graph a) where
-  vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
-  
-  succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
-  succs graph (Edge v w) = [Edge w $ label u | u <- succs graph (Vertex w)]
-  
-  preds (Graph _ back _) (Vertex v) = map Vertex $ back ! v
-  preds graph (Edge v w) = [Edge (label u) v | u <- preds graph (Vertex v)]
-
+instance (Ord a) => EditableReticular a (Graph a) where
   insert g@(Graph verts back forw) item@(Vertex v)
     | hasItem g item = g
     | otherwise = Graph verts' back' forw'
@@ -120,18 +130,13 @@ instance (Ord a) => Reticular a (Graph a) where
               back'     = Map.delete v $ without v back
               forw'     = Map.delete v $ without v forw
               without v = fmap (filter (/= v))
+
   delete g@(Graph verts back forw) item@(Edge v w)
     | not $ hasItem g item = g
     | otherwise            = Graph verts' back' forw'
         where verts' = verts
               back'  = Map.insertWith (const . filter (/= v)) w [] back
-              forw'  = Map.insertWith (const . filter (/= w)) v [] back
+              forw'  = Map.insertWith (const . filter (/= w)) v [] forw
 
-  hasItem (Graph verts _ _) (Vertex v) =
-    Set.member v verts
-  hasItem g@(Graph verts _ forw) (Edge v w) =
-    Set.member v verts && (elem w $ forw ! v)
-
-instance (Ord a, Show a) => Show (Graph a) where
-  show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)
-    where isolatedVertices = filter (isolated g) $ vertices g
+graph :: Ord a => [GraphItem a] -> Graph a
+graph = (Graph Set.empty Map.empty Map.empty +/)

@@ -72,7 +72,7 @@ instance Eq a => Reticular a (GraphItem a) where
   edges (Edge v w)    = [Edge v w]
 
 
-data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
+data Graph a = Graph (Set a) (Map a [a]) (Map a [a])
 
 instance (Ord a) => Reticular a (Graph a) where
   vertices (Graph verts _ _)        = map Vertex $ Set.toList verts

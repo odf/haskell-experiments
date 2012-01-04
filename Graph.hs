@@ -65,6 +65,12 @@ instance (Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g
 
+instance Eq a => Reticular a (GraphItem a) where
+  vertices (Vertex v) = [Vertex v]
+  vertices (Edge v w) = [Vertex v, Vertex w]
+  edges (Vertex v)    = []
+  edges (Edge v w)    = [Edge v w]
+
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a]) deriving (Eq)
 
@@ -95,17 +101,13 @@ class RPart a pa | pa -> a where
   (+/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
   (-/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
 
-instance RPart a (GraphItem a) where
-  (+/) = insert
-  (-/) = delete
-
-instance RPart a [GraphItem a] where
-  (+/) = foldl insert
-  (-/) = foldl delete
-
 instance (Reticular a ra) => RPart a ra where
-  graph +/ graph' = graph +/ vertices graph' +/ edges graph'
-  graph -/ graph' = graph -/ edges graph'
+  graph +/ graph' = foldl insert graph (vertices graph' ++ edges graph')
+  graph -/ graph' = foldl delete graph (edges graph')
+
+instance (Reticular a ra) => RPart a [ra] where
+  (+/) = foldl (+/)
+  (-/) = foldl (-/)
 
 
 instance (Ord a) => EditableReticular a (Graph a) where
@@ -120,8 +122,8 @@ instance (Ord a) => EditableReticular a (Graph a) where
     | otherwise = Graph verts' back' forw'
         where (Graph verts back forw) = g +/ map Vertex [v, w]
               verts' = verts
-              back'  = Map.insertWith' (flip (++)) w [v] back
-              forw'  = Map.insertWith' (flip (++)) v [w] forw
+              back'  = Map.insertWith' (++) w [v] back
+              forw'  = Map.insertWith' (++) v [w] forw
 
   delete g@(Graph verts back forw) item@(Vertex v)
     | not $ hasItem g item = g
@@ -135,8 +137,8 @@ instance (Ord a) => EditableReticular a (Graph a) where
     | not $ hasItem g item = g
     | otherwise            = Graph verts' back' forw'
         where verts' = verts
-              back'  = Map.insertWith (const . filter (/= v)) w [] back
-              forw'  = Map.insertWith (const . filter (/= w)) v [] forw
+              back'  = Map.insertWith' (flip $ const . filter (/= v)) w [] back
+              forw'  = Map.insertWith' (flip $ const . filter (/= w)) v [] forw
 
 graph :: Ord a => [GraphItem a] -> Graph a
 graph = (Graph Set.empty Map.empty Map.empty +/)

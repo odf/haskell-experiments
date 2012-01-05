@@ -97,17 +97,11 @@ class Reticular a ra => EditableReticular a ra where
   insert :: ra -> GraphItem a -> ra
   delete :: ra -> GraphItem a -> ra
 
-class RPart a pa | pa -> a where
-  (+/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
-  (-/) :: (RPart a pa, EditableReticular a ra) => ra -> pa -> ra
-
-instance (Reticular a ra) => RPart a ra where
+  (+/) :: (EditableReticular a ra, Reticular a pa) => ra -> pa -> ra
   graph +/ graph' = foldl insert graph (vertices graph' ++ edges graph')
-  graph -/ graph' = foldl delete graph (edges graph')
 
-instance (Reticular a ra) => RPart a [ra] where
-  (+/) = foldl (+/)
-  (-/) = foldl (-/)
+  (-/) :: (EditableReticular a ra, Reticular a pa) => ra -> pa -> ra
+  graph -/ graph' = foldl delete graph (edges graph')
 
 
 instance (Ord a) => EditableReticular a (Graph a) where
@@ -120,7 +114,7 @@ instance (Ord a) => EditableReticular a (Graph a) where
   insert g item@(Edge v w)
     | hasItem g item = g
     | otherwise = Graph verts' back' forw'
-        where (Graph verts back forw) = g +/ map Vertex [v, w]
+        where (Graph verts back forw) = g `insert` Vertex v `insert` Vertex w
               verts' = verts
               back'  = Map.insertWith' (++) w [v] back
               forw'  = Map.insertWith' (++) v [w] forw
@@ -141,4 +135,4 @@ instance (Ord a) => EditableReticular a (Graph a) where
               forw'  = Map.insertWith' (flip $ const . filter (/= w)) v [] forw
 
 graph :: Ord a => [GraphItem a] -> Graph a
-graph = (Graph Set.empty Map.empty Map.empty +/)
+graph = foldl insert (Graph Set.empty Map.empty Map.empty)

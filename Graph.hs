@@ -87,7 +87,13 @@ instance (Ord a) => Reticular a (Graph a) where
     Set.member v verts
   hasItem g@(Graph verts _ forw) (Edge v w) =
     Set.member v verts && (elem w $ forw ! v)
-  
+
+instance Ord a => Eq (Graph a) where
+  g == g' = edgesInOrder g    == edgesInOrder g' && 
+            verticesInOrder g == verticesInOrder g'
+              where edgesInOrder    = sort . edges
+                    verticesInOrder = sort . vertices
+
 instance (Ord a, Show a) => Show (Graph a) where
   show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)
     where isolatedVertices = filter (isolated g) $ vertices g

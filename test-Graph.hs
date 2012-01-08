@@ -1,9 +1,7 @@
 import Test.Framework (defaultMain, testGroup)
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck (testProperty)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Test.QuickCheck
-import Test.HUnit
 
 import Data.List (sort)
 import Graph

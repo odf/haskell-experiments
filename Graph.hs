@@ -48,25 +48,25 @@ class Eq a => Reticular a ra | ra -> a where
 
   hasItem graph = (`elem` items graph)
 
-source :: Reticular a ra => ra -> GraphItem a -> Bool
-source graph item@(Vertex _) =
+hasSource :: Reticular a ra => ra -> GraphItem a -> Bool
+hasSource graph item@(Vertex _) =
   (hasItem graph item) && (null $ preds graph item)
-source _ _ = False
+hasSource _ _ = False
 
-sink :: Reticular a ra => ra -> GraphItem a -> Bool
-sink graph item@(Vertex _) =
+hasSink :: Reticular a ra => ra -> GraphItem a -> Bool
+hasSink graph item@(Vertex _) =
   (hasItem graph item) && (null $ succs graph item)
-sink _ _ = False
+hasSink _ _ = False
 
-internal :: Reticular a ra => ra -> GraphItem a -> Bool
-internal g v = (hasItem g v) && (not $ source g v) && (not $ sink g v)
+hasInternal :: Reticular a ra => ra -> GraphItem a -> Bool
+hasInternal g v = (hasItem g v) && (not $ hasSource g v) && (not $ hasSink g v)
 
-isolated :: Reticular a ra => ra -> GraphItem a -> Bool
-isolated g v = (hasItem g v) && (source g v) && (sink g v)
+hasIsolated :: Reticular a ra => ra -> GraphItem a -> Bool
+hasIsolated g v = (hasItem g v) && (hasSource g v) && (hasSink g v)
 
 instance (Show a, Reticular a ra) => Show ra where
   show g = "graph " ++ show ((edges g) ++ isolatedVertices)
-    where isolatedVertices = filter (isolated g) $ vertices g
+    where isolatedVertices = filter (hasIsolated g) $ vertices g
 
 instance Eq a => Reticular a (GraphItem a) where
   vertices (Vertex v) = [Vertex v]
@@ -99,7 +99,7 @@ instance Ord a => Eq (Graph a) where
 
 instance (Ord a, Show a) => Show (Graph a) where
   show g = "graph " ++ show ((sort $ edges g) ++ sort isolatedVertices)
-    where isolatedVertices = filter (isolated g) $ vertices g
+    where isolatedVertices = filter (hasIsolated g) $ vertices g
 
 
 class Reticular a ra => EditableReticular a ra where

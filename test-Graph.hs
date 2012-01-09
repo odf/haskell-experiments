@@ -10,18 +10,22 @@ main = defaultMain tests
 
 tests = [
     testGroup "Basics" [
-      testProperty "vertices"    (prop_vertices :: Graph Color -> Bool)
-    , testProperty "edges"       (prop_edges    :: Graph Color -> Bool)
-    , testProperty "items"       (prop_items    :: Graph Color -> Bool)
-    , testProperty "adjacencies" (prop_adjs     :: Graph Color -> Bool)
+      testProperty "vertices"     (prop_vertices :: Graph Color -> Bool)
+    , testProperty "edges"        (prop_edges    :: Graph Color -> Bool)
+    , testProperty "items"        (prop_items    :: Graph Color -> Bool)
+    , testProperty "adjacencies"  (prop_adjs     :: Graph Color -> Bool)
     ]
   , testGroup "Tests" [
-      testProperty "has item"    (prop_has_item :: 
-                                     Graph Color -> GraphItem Color -> Bool)
-    , testProperty "has source"  (prop_has_source :: 
-                                     Graph Color -> GraphItem Color -> Bool)
-    , testProperty "has sink"    (prop_has_sink :: 
-                                     Graph Color -> GraphItem Color -> Bool)
+      testProperty "has item"     (prop_has_item :: 
+                                    Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has source"   (prop_has_source :: 
+                                    Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has sink"     (prop_has_sink :: 
+                                    Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has internal" (prop_has_internal :: 
+                                    Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has isolated" (prop_has_internal :: 
+                                    Graph Color -> GraphItem Color -> Bool)
     ]
   ]
 
@@ -65,10 +69,16 @@ prop_adjs g = all good $ vertices g
 
 prop_has_item g item = hasItem g item == (item `elem` items g)
 
-prop_has_source g x = source g x == (hasItem g x && not (destination x))
+prop_has_source g x = hasSource g x == (hasItem g x && not (destination x))
   where destination (Vertex v) = v `elem` map to (edges g)
         destination _          = True
 
-prop_has_sink g x = sink g x == (hasItem g x && not (origin x))
+prop_has_sink g x = hasSink g x == (hasItem g x && not (origin x))
   where origin (Vertex v) = v `elem` map from (edges g)
         origin _          = True
+
+prop_has_internal g x = 
+  hasInternal g x == (hasItem g x && not (hasSink g x) && not (hasSource g x))
+
+prop_has_isolated g x = 
+  hasIsolated g x == (hasItem g x && (hasSink g x) && (hasSource g x))

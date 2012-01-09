@@ -8,12 +8,6 @@ import Graph
 
 main = defaultMain tests
 
-data Color = Red | Green | Blue | Yellow | Magenta | Cyan | Black | White
-  deriving (Eq, Ord, Show)
-
-instance Arbitrary Color where
-  arbitrary = elements [ Red, Green, Blue, Yellow, Magenta, Cyan, Black, White ]
-
 tests = [
     testGroup "Basics" [
       testProperty "vertices"    (prop_vertices :: Graph Color -> Bool)
@@ -21,11 +15,21 @@ tests = [
     , testProperty "items"       (prop_items    :: Graph Color -> Bool)
     , testProperty "adjacencies" (prop_adjs     :: Graph Color -> Bool)
     ]
-  , testGroup "Containment" [
+  , testGroup "Tests" [
       testProperty "has item"    (prop_has_item :: 
+                                     Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has source"  (prop_has_source :: 
+                                     Graph Color -> GraphItem Color -> Bool)
+    , testProperty "has sink"    (prop_has_sink :: 
                                      Graph Color -> GraphItem Color -> Bool)
     ]
   ]
+
+data Color = Red | Green | Blue | Yellow | Magenta | Cyan | Black | White
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary Color where
+  arbitrary = elements [ Red, Green, Blue, Yellow, Magenta, Cyan, Black, White ]
 
 instance (Arbitrary a) => Arbitrary (GraphItem a) where
   arbitrary = oneof [
@@ -60,3 +64,11 @@ prop_adjs g = all good $ vertices g
   where good v = sort (adjs g v) == sort (preds g v ++ succs g v)
 
 prop_has_item g item = hasItem g item == (item `elem` items g)
+
+prop_has_source g x = source g x == (hasItem g x && not (destination x))
+  where destination (Vertex v) = v `elem` map to (edges g)
+        destination _          = True
+
+prop_has_sink g x = sink g x == (hasItem g x && not (origin x))
+  where origin (Vertex v) = v `elem` map from (edges g)
+        origin _          = True

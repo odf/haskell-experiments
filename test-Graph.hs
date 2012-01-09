@@ -15,7 +15,7 @@ tests = [
     , testProperty "items"        (prop_items    :: Graph Color -> Bool)
     , testProperty "adjacencies"  (prop_adjs     :: Graph Color -> Bool)
     ]
-  , testGroup "Tests" [
+  , testGroup "Item Properties" [
       testProperty "has item"     (prop_has_item :: 
                                     Graph Color -> GraphItem Color -> Bool)
     , testProperty "has source"   (prop_has_source :: 
@@ -26,6 +26,10 @@ tests = [
                                     Graph Color -> GraphItem Color -> Bool)
     , testProperty "has isolated" (prop_has_internal :: 
                                     Graph Color -> GraphItem Color -> Bool)
+    ]
+  , testGroup "Whole Graph" [
+      testProperty "equality"     (prop_equal :: 
+                                    Graph Color -> Graph Color -> Bool)
     ]
   ]
 
@@ -82,3 +86,5 @@ prop_has_internal g x =
 
 prop_has_isolated g x = 
   hasIsolated g x == (hasItem g x && (hasSink g x) && (hasSource g x))
+
+prop_equal g g' = (g == g') == ((sort $ items g) == (sort $ items g'))

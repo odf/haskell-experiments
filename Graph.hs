@@ -70,7 +70,7 @@ instance Eq a => Reticular a (GraphItem a) where
 
 data Graph a = Graph (Set a) (Map a [a]) (Map a [a])
 
-instance (Ord a) => Reticular a (Graph a) where
+instance Ord a => Reticular a (Graph a) where
   vertices (Graph verts _ _)        = map Vertex $ Set.toList verts
   
   succs (Graph _ _ forw) (Vertex v) = map Vertex $ forw ! v
@@ -105,7 +105,7 @@ class Reticular a ra => EditableReticular a ra where
   (-/) :: (EditableReticular a ra, Reticular a pa) => ra -> pa -> ra
   graph -/ graph' = foldl delete graph (edges graph')
 
-instance (Ord a) => EditableReticular a (Graph a) where
+instance Ord a => EditableReticular a (Graph a) where
   insert g@(Graph verts back forw) item@(Vertex v)
     | hasItem g item = g
     | otherwise = Graph verts' back' forw'

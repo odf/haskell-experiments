@@ -64,9 +64,6 @@ hasInternal g v = (hasItem g v) && (not $ hasSource g v) && (not $ hasSink g v)
 hasIsolated :: Reticular a ra => ra -> GraphItem a -> Bool
 hasIsolated g v = (hasItem g v) && (hasSource g v) && (hasSink g v)
 
-instance (Show a, Reticular a ra) => Show ra where
-  show g = "graph " ++ show ((edges g) ++ isolatedVertices)
-    where isolatedVertices = filter (hasIsolated g) $ vertices g
 
 instance Eq a => Reticular a (GraphItem a) where
   vertices (Vertex v) = [Vertex v]
@@ -111,7 +108,6 @@ class Reticular a ra => EditableReticular a ra where
 
   (-/) :: (EditableReticular a ra, Reticular a pa) => ra -> pa -> ra
   graph -/ graph' = foldl delete graph (edges graph')
-
 
 instance (Ord a) => EditableReticular a (Graph a) where
   insert g@(Graph verts back forw) item@(Vertex v)

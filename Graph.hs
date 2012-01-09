@@ -1,8 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses
-           , FunctionalDependencies
-           , FlexibleInstances
-           , UndecidableInstances
-           , OverlappingInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
 
 -- a data type for directed graphs (incomplete)
 

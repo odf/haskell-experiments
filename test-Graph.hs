@@ -8,14 +8,30 @@ import Graph
 
 main = defaultMain tests
 
+data Color = Red | Green | Blue | Yellow | Magenta | Cyan | Black | White
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary Color where
+  arbitrary = elements [ Red, Green, Blue, Yellow, Magenta, Cyan, Black, White ]
+
 tests = [
-  testGroup "Basics" [
-      testProperty "vertices"    (prop_vertices :: Graph Int -> Bool)
-    , testProperty "edges"       (prop_edges    :: Graph Int -> Bool)
-    , testProperty "items"       (prop_items    :: Graph Int -> Bool)
-    , testProperty "adjacencies" (prop_adjs     :: Graph Int -> Bool)
+    testGroup "Basics" [
+      testProperty "vertices"    (prop_vertices :: Graph Color -> Bool)
+    , testProperty "edges"       (prop_edges    :: Graph Color -> Bool)
+    , testProperty "items"       (prop_items    :: Graph Color -> Bool)
+    , testProperty "adjacencies" (prop_adjs     :: Graph Color -> Bool)
+    ]
+  , testGroup "Containment" [
+      testProperty "has item"    (prop_has_item :: 
+                                     Graph Color -> GraphItem Color -> Bool)
     ]
   ]
+
+instance (Arbitrary a) => Arbitrary (GraphItem a) where
+  arbitrary = oneof [
+      fmap Vertex arbitrary
+    , fmap (uncurry Edge) arbitrary
+    ]
 
 instance (Ord a, Arbitrary a) => Arbitrary (Graph a) where
   arbitrary = do
@@ -42,3 +58,5 @@ prop_items g = sort (items g) == sort (vertices g ++ edges g)
 
 prop_adjs g = all good $ vertices g
   where good v = sort (adjs g v) == sort (preds g v ++ succs g v)
+
+prop_has_item g item = hasItem g item == (item `elem` items g)

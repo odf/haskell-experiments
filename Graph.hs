@@ -58,7 +58,7 @@ hasInternal :: Reticular a ra => ra -> GraphItem a -> Bool
 hasInternal g v = (hasItem g v) && (not $ hasSource g v) && (not $ hasSink g v)
 
 hasIsolated :: Reticular a ra => ra -> GraphItem a -> Bool
-hasIsolated g v = (hasItem g v) && (hasSource g v) && (hasSink g v)
+hasIsolated g v = (hasSource g v) && (hasSink g v)
 
 
 instance Eq a => Reticular a (GraphItem a) where
